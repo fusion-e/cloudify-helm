@@ -125,6 +125,40 @@ spec:
             '
         {{- end }}
       containers:
+      {{- if .Values.nginx.fastly.enabled }}
+      - name: sigsci-agent
+        env:
+        - name: SIGSCI_ACCESSKEYID
+          valueFrom:
+            secretKeyRef:
+              key: accesskeyid
+              name: sigsci.fusion
+        - name: SIGSCI_SECRETACCESSKEY
+          valueFrom:
+            secretKeyRef:
+              key: secretaccesskey
+              name: sigsci.fusion
+        # - name: SIGSCI_DEBUG_LOG_ALL_THE_THINGS
+        #   value: "true"
+        - name: SIGSCI_LOG_OUT
+          value: stdout
+        image: {{ include "helper.fastly.image" (dict "fastly" .Values.nginx.fastly) }}
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9999
+          protocol: TCP
+        resources: {}
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsGroup: 101
+          runAsNonRoot: true
+          runAsUser: 100
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /sigsci/tmp
+          name: sigsci-tmp
+      {{- end }}
       - name: {{ template "cloudify-manager-worker.name" . }}
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -256,6 +290,12 @@ spec:
         {{- end }}
         {{- end }}
       volumes:
+      {{- if .Values.nginx.fastly.enabled }}
+      - name: sigsci-tmp
+        emptyDir:
+          medium: Memory
+          sizeLimit: "2Gi"
+      {{- end }}
       - name: run
         emptyDir:
           medium: Memory
